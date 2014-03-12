@@ -1,0 +1,4 @@
+erinite
+=======
+
+ A hydrous arseniate of copper, of an emerald-green color; -- so called from Erin, or Ireland, where it occurs.
