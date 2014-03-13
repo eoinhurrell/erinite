@@ -1,14 +1,12 @@
 (ns erinite.core
-  #+cljs (:use [cljs.core.async :only [chan <! >!]])
-  #+clj  (:use [clojure.core.async :only [chan <! >! go go-loop]])
-  #+cljs (:use-macros [cljs.core.async.macros :only [go go-loop]]))
+  (:use [clojure.core.async :only [chan <! >! go go-loop]]))
+
 
 (defn -route-messages
   "Route messages from the message channel to one or more target channels"
   [message-ch targets]
   (go-loop []
     (when-let [message (<! message-ch)]
-      (println "Got message" message)
       ; For each potential target, check if the message matches the
       ; configuration and if so, send the message to that targets channel.
       (let [topic (first message)]
@@ -17,18 +15,24 @@
             (>! ch message))))
       (recur))))
 
+
 (defn state-transform
   "Update the state by applying the message"
   [state message config]
   (let [[topic params] message]
-    state))
+    (reduce
+      ; For each path and update-fn pair, apply the update-fn to state
+      (fn [state [path update-fn]]
+        (update-in state path update-fn params))
+      state
+      (get config topic []))))
+
 
 (defn -dispatch-transforms
   "Dispatch messages to transform functions"
   [ch config state]
   (go-loop []
     (when-let [message (<! ch)]
-      (println "Transform got message" message)
       (swap! state
              state-transform
              message
@@ -66,8 +70,7 @@
                                  [service-ch    services-map]])
     (-dispatch-transforms transforms-ch transforms-map state)
     {:state state
-     :messages message-ch
+     :channel message-ch
      :name name}))
-
 
 
