@@ -85,14 +85,14 @@
              {:a [1 2] :b :B}
              [:msg 3]
              {:some-msg [[[:a] conj]]})
-           {:a [1 2] :b :B})))
+           [{:a [1 2] :b :B} #{}])))
 
   (testing "state gets transformed by message when one message is configured"
     (is (= (state-transform
              {:a [1 2] :b :B}
              [:msg 3]
              {:msg [[[:a] conj]]})
-           {:a [1 2 3] :b :B})))
+           [{:a [1 2 3] :b :B} #{[:a]}])))
 
   (testing "state gets transformed by message when one message is configured"
     (is (= (state-transform
@@ -100,5 +100,5 @@
              [:msg 3]
              {:msg [[[:a] conj]
                     [[:b] (fn [p v] v)]]})
-           {:a [1 2 3] :b 3}))))
+           [{:a [1 2 3] :b 3} #{[:a] [:b]}]))))
 

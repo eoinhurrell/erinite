@@ -22,21 +22,25 @@
   (let [[topic params] message]
     (reduce
       ; For each path and update-fn pair, apply the update-fn to state
-      (fn [state [path update-fn]]
-        (update-in state path update-fn params))
-      state
+      (fn [[state changes] [path update-fn]]
+        [(update-in state path update-fn params)
+         (conj changes path)])
+      [state #{}]
       (get config topic []))))
 
 
 (defn -dispatch-transforms
   "Dispatch messages to transform functions"
-  [ch config state]
+  [ch config-transform config-derive state]
   (go-loop []
     (when-let [message (<! ch)]
       (swap! state
-             state-transform
-             message
-             config)
+             (fn [s]
+               (let [[new-state derives] (state-transform
+                                           s
+                                           message
+                                           config-transform)]
+                 new-state)))
       (recur))))
 
 
@@ -65,10 +69,16 @@
         service-ch      (chan)
         state           (atom {})
         transforms-map  (list->map transform)
-        services-map    (list->map service)]
+        services-map    (list->map service)
+        derives-conf    (map (fn [[deps path func]]
+                               [(set deps) deps path func])
+                             derive)]
     (-route-messages message-ch [[transforms-ch transforms-map]
                                  [service-ch    services-map]])
-    (-dispatch-transforms transforms-ch transforms-map state)
+    (-dispatch-transforms transforms-ch
+                          transforms-map
+                          derives-conf
+                          state)
     {:state state
      :channel message-ch
      :name name}))
