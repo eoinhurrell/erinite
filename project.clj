@@ -25,7 +25,7 @@
                    :output-path "target/generated-test"
                    :rules :cljs}]}
   
-  :hooks [cljx.hooks]
+  ;:hooks [cljx.hooks]
 
   :cljsbuild {:builds [{:source-paths ["target/generated-src/cljs" "target/generated-test"]
                         :compiler {:output-to "target/cljs/testable.js"
