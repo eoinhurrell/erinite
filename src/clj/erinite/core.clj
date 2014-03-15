@@ -1,5 +1,6 @@
 (ns erinite.core
-  (:use [clojure.core.async :only [chan <! >! go go-loop]]))
+  (:use [clojure.core.async :only [chan <! >! go go-loop]]
+        [clojure.set :only [intersection]]))
 
 
 (defn -route-messages
@@ -28,6 +29,23 @@
       [state #{}]
       (get config topic []))))
 
+(defn state-derive
+  ""
+  [state derives config]
+  (reduce
+    (fn [state [deps-set deps path func]]
+      (if-not (empty? (intersection derives deps-set))
+        (let [depends (vec (map #(get-in state %) deps))]
+          (apply
+            update-in
+            state
+            path
+            func
+            depends))
+        state))
+    state
+    config))
+
 
 (defn -dispatch-transforms
   "Dispatch messages to transform functions"
@@ -40,7 +58,7 @@
                                            s
                                            message
                                            config-transform)]
-                 new-state)))
+                 (state-derive new-state derives config-derive))))
       (recur))))
 
 
@@ -60,6 +78,26 @@
                     value)))
          {})))
 
+(defn parse-derive-depends
+  "Parse derive configuration to extract dependencies which trigger calculation"
+  [confs]
+  (map (fn [[deps path func]]
+         (let [[triggers statics _]
+               (reduce  (fn [[trigger static trig?] dep]
+                          (cond
+                            (= dep :static=)  [trigger
+                                               static
+                                               false]
+                            trig?             [(conj trigger dep)
+                                               (conj static dep)
+                                               true]
+                            :else             [trigger
+                                               (conj static dep)
+                                               false]))
+                        [#{} [] true]
+                        deps)]
+           [triggers statics path func]))
+       confs))
 
 (defn configure-app
   "Create, configure and start an application"
@@ -70,9 +108,7 @@
         state           (atom {})
         transforms-map  (list->map transform)
         services-map    (list->map service)
-        derives-conf    (map (fn [[deps path func]]
-                               [(set deps) deps path func])
-                             derive)]
+        derives-conf    (parse-derive-depends derive)]
     (-route-messages message-ch [[transforms-ch transforms-map]
                                  [service-ch    services-map]])
     (-dispatch-transforms transforms-ch
