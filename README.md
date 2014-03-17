@@ -16,7 +16,7 @@ Clojure philosophies of decomplection and simplicity. Erinite is modelled after
 these concepts and looks similar to Pedestal.
 Where Erinite hopes to set itself apart from Pedestal is through a composable
 mix-and-match component-based architecture and heavier emphasis on
-functional-reactive messages.
+functional-reactive messaging.
 
 ## Design Goals
 
