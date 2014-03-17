@@ -1,3 +1,3 @@
-# Introduction to catalyst
+# Introduction to Erinite
 
 TODO: write [great documentation](http://jacobian.org/writing/great-documentation/what-to-write/)
