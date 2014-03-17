@@ -34,7 +34,7 @@ The following secondary goals exist to enable to above:
 * Ease of hooking in interactive tools
 * REPL friendly API
 
-A auxiliary goal of Erinite is to make use of existing libraries and tools
+An auxiliary goal of Erinite is to make use of existing libraries and tools
 where possible, to avoid duplication of effort and to allow libraries to be
 replaced or removed as appropriate. A core philosophy of Clojure is to write
 small composable libraries and Erinite should embrace this philosophy whenever
