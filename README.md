@@ -9,19 +9,14 @@ reactive, composable components.
 
 ## Rationale
 
-There are already a number of great web frameworks available and some very
-promising ones currently in development. Most follow the Rails/Django model, or
-the Flask/Sinatra model, or the Lift model. While they work well for what they
-were designed to do, the reactive models used by Hoplon and Pedestal appear to
-follow the Clojure philosophies of decomplection and simplicity much more
-closely. Erinite therefore is modelled after these concepts and looks quite
-similar to Pedestal. Where Erinite hopes to set itself apart from Pedestal is
-through a composable mix-and-match component-based architecture and heavier
-emphasis on functional-reactive messages.
-
-The final reason for Erinites existence is that, at the time of writing,
-Pedestal was not yet close to production ready (and client-side Pedestal in
-limbo), while we wanted something we can use right now.
+Most of the existing web frameworks follow the "traditional" MVC-like models and
+while they work very well for what they were designed to do, the reactive models
+used by frameworks such as Hoplon and Pedestal appear to more closely follow the
+Clojure philosophies of decomplection and simplicity. Erinite is modelled after
+these concepts and looks similar to Pedestal.
+Where Erinite hopes to set itself apart from Pedestal is through a composable
+mix-and-match component-based architecture and heavier emphasis on
+functional-reactive messages.
 
 ## Design Goals
 
@@ -32,17 +27,18 @@ limbo), while we wanted something we can use right now.
 * Reactive user interaction logic
 * Empower interactive development
 
-The first three points are achieved through loosely coupled services that
-communicate through messages.
-The fourth point is achieved through logic-less HTML templates using enlive.
-The fifth point is achieved by communicating between input, logic and output
-through a functional-reactive core.
-
-The final point is achieved through the following:
+The following secondary goals exist to enable to above:
 * Data-centric design
 * Reloadable, restartable compontents
+* Communication through functional-reactive messaging
 * Ease of hooking in interactive tools
 * REPL friendly API
+
+A auxiliary goal of Erinite is to make use of existing libraries and tools
+where possible, to avoid duplication of effort and to allow libraries to be
+replaced or removed as appropriate. A core philosophy of Clojure is to write
+small composable libraries and Erinite should embrace this philosophy whenever
+possible.
 
 These goals were chosen so that applications written using Erinite are easy to
 develop, easy to test, easy to think about, easy to modify and easy to extend,
@@ -51,11 +47,6 @@ know future requirements, so enabling quick, safe (breaking changes are caught
 early) and convenient modification is the only way to stay ahead of the
 competition.
 
-A secondary goal of Erinite is to make use of existing libraries and tools
-where possible, to avoid duplication of effort and to allow libraries to be
-replaced or removed as appropriate. A core philosophy of Clojure is to write
-small composable libraries and Erinite should embrace this philosophy whenever
-possible.
 
 ## Design Overview
 
