@@ -1,8 +1,7 @@
 # Erinite
 
-Erinite:
-    A hydrous arseniate of copper, of an emerald-green color; -- so called from
-    Erin, or Ireland, where it occurs
+> A hydrous arseniate of copper, of an emerald-green color; -- so called from
+> Erin, or Ireland, where it occurs
 
 Erinite is a web framework for interactive web applications. Erinite allows the
 development of both server and client in Clojure(Script) as highly decoupled,
