@@ -7,6 +7,8 @@ Erinite is a web framework for interactive web applications. Erinite allows the
 development of both server and client in Clojure(Script) as highly decoupled,
 reactive, composable components.
 
+**WARNING: Erinite is pre-alpha and should be considered experimental**
+
 ## Rationale
 
 Most of the existing web frameworks follow the "traditional" MVC-like models and
