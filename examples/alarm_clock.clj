@@ -30,12 +30,12 @@
 
 (defn handle-selection
   "User is using prev/next to select an alarm from the list"
-  [state topic value alarms]
+  [selection topic _ alarms]
   (let [num-alarms  (dec (count alarms))
         ; Set the current selection based on which user action was sent
         value       (match topic
-                      :prev (dec state)
-                      :next (inc state))]
+                      :prev (dec selection)
+                      :next (inc selection))]
     ; Make sure that the selection is within the correct range
     (or (when (< value 0) num-alarms)
         (when (> value num-alarms) 0)
@@ -43,34 +43,34 @@
 
 (defn handle-toggle
   "User is toggling the current selection to enable or disable the alarm"
-  [state topic value selection]
+  [alarms _ _  selection]
   (map
-    (fn [idx [name enabled ticks]]
-      [name
+    (fn [idx [alarm-name alarm-enabled alarm-start-time]]
+      [alarm-name
        ; If this alarm is the selected alarm, then toggle it, otherwise leave it
-       (if (= idx selection) (not enabled) enabled)
-       ticks])
+       (if (= idx selection) (not alarm-enabled) alarm-enabled)
+       alarm-start-time])
     (range) ; Get the index so it can be checked against selection
-    state))
+    alarms))
 
 (defn handle-create
   "User is creating a new alarm"
-  [state topic [name ticks]]
+  [alarms _ [alarm-name alarm-start-time]]
   ; Simply append the new alarm to the list of existing alarms
-  (conj state [name false ticks]))
+  (conj alarms [alarm-name false alarm-start-time]))
 
 (defn handle-notices
   "Ticks have been updated, system now checks if any alarms must go off"
-  [state topic ticks alarms]
+  [notices _ current-time alarms]
   (->>
     alarms
     ; Keep only alarms that are going off
     (filter (fn [[_ enabled start-time]]
               ; To be going off, an alarm must be enabled and ticks be between
               ; its start time and the end time (+ start-time  duration)
-              (and enabled (>= (+ start-time 25) ticks start-time))))
+              (and enabled (>= (+ start-time 25) current-time start-time))))
     ; Now change each alarm into the expected format
-    (map (fn [[name _ _] name]))))
+    (map (fn [[alarm-name _ _] alarm-name]))))
 
 
 (def app (map-transforms
