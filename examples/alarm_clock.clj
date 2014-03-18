@@ -45,10 +45,10 @@
   "User is toggling the current selection to enable or disable the alarm"
   [state topic value selection]
   (map
-    (fn [idx [name active ticks]]
+    (fn [idx [name enabled ticks]]
       [name
        ; If this alarm is the selected alarm, then toggle it, otherwise leave it
-       (if (= idx selection) (not active) active)
+       (if (= idx selection) (not enabled) enabled)
        ticks])
     (range) ; Get the index so it can be checked against selection
     state))
