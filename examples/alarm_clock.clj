@@ -32,9 +32,11 @@
   "User is using prev/next to select an alarm from the list"
   [state topic value alarms]
   (let [num-alarms  (dec (count alarms))
+        ; Set the current selection based on which user action was sent
         value       (match topic
                       :prev (dec state)
                       :next (inc state))]
+    ; Make sure that the selection is within the correct range
     (or (when (< value 0) num-alarms)
         (when (> value num-alarms) 0)
         value)))
@@ -44,18 +46,17 @@
   [state topic value selection]
   (map
     (fn [idx [name active ticks]]
-      (vector 
-        name
-        (if (= idx selection)
-          (not active)
-          active)
-       ticks))
-    (range)
+      [name
+       ; If this alarm is the selected alarm, then toggle it, otherwise leave it
+       (if (= idx selection) (not active) active)
+       ticks])
+    (range) ; Get the index so it can be checked against selection
     state))
 
 (defn handle-create
   "User is creating a new alarm"
   [state topic [name ticks]]
+  ; Simply append the new alarm to the list of existing alarms
   (conj state [name false ticks]))
 
 (defn
@@ -80,7 +81,7 @@
              [#{:toggle}     [:selection] :alarms             handle-toggle]
              [#{:create}                  :alarms             handle-create]
              [#{:tick}                    :ticks      :prev   inc]
-             [#{:ticks}     [:alarms]     :notices            handle-notices]]))
+             [#{:ticks}      [:alarms]    :notices            handle-notices]]))
 
 ; Now, hook up events.
 ; First initialise the app:
