@@ -59,7 +59,7 @@
   ; Simply append the new alarm to the list of existing alarms
   (conj state [name false ticks]))
 
-(defn
+(defn handle-notices
   "Ticks have been updated, system now checks if any alarms must go off"
   [state topic ticks alarms]
   (->>
