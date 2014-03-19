@@ -58,13 +58,42 @@
 (deftest test-parse-mappings
   (testing "parse list of mappings"
     (is (= (parse-mappings
-              [[#{:init}                    :alarms     :const  (fn [] [])]
-               [#{:init}                    :selection  :const  (fn [] 0)]
+              [[#{:init}                    :alarms     :const  identity]
+               [#{:init}                    :selection  :const  identity]
                [#{:prev :next} [:alarms]    :selection          identity]
                [#{:toggle}     [:selection] :alarms             identity]
                [#{:create}                  :alarms             identity]
-               [#{:tick}                    :ticks      :prev   inc]
+               [#{:tick}                    :ticks      :prev   identity]
                [#{:ticks}      [:alarms]    :notices            identity]])
-           {:inputs  #{:init :prev :next :toggle :create :tick :ticks}
-            :depends #{:alarms :selection}
-            :output  #{:alarms :selection :ticks :notices}}))))
+           {:inputs  #{:init :prev :next :toggle :create :tick }
+            :depends #{:alarms :selection }
+            :outputs #{:alarms :selection :ticks :notices}
+            :handlers [{:inputs #{:init}
+                        :output :alarms
+                        :opts :const
+                        :handler identity}
+                       {:inputs #{:init}
+                        :output :selection
+                        :opts :const
+                        :handler identity}
+                       {:inputs #{:prev :next}
+                        :depends [:alarms]
+                        :output :selection
+                        :handler identity}
+                       {:inputs #{:toggle}
+                        :depends [:selection]
+                        :output :alarms
+                        :handler identity}
+                       {:inputs #{:create}
+                        :output :alarms
+                        :handler identity}
+                       {:inputs #{:tick}
+                        :output :ticks
+                        :opts :prev
+                        :handler identity}
+                       {:inputs #{:ticks}
+                        :depends [:alarms]
+                        :output :notices
+                        :handler identity}]}))))
+
+

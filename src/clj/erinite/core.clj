@@ -1,5 +1,5 @@
 (ns erinite.core
-  (:use [clojure.core.async :only [chan <! >! go go-loop]]
+  (:use [clojure.core.async :only [chan <! >! go go-loop alts!]]
         [clojure.set :only [intersection]]))
 
 
@@ -61,6 +61,14 @@
                  (state-derive new-state derives config-derive))))
       (recur))))
 
+(defn get-channels
+  "Get list of channels"
+  [message-ch serv]
+  (->> serv
+       :channels
+       (map second)
+       (concat [message-ch])))
+
 
 (defn list->map
   "Takes a list of configuration data and transforms it into a map so that
@@ -82,20 +90,8 @@
   "Parse derive configuration to extract dependencies which trigger calculation"
   [confs]
   (map (fn [[deps path func]]
-         (let [[triggers statics _]
-               (reduce  (fn [[trigger static trig?] dep]
-                          (cond
-                            (= dep :static=)  [trigger
-                                               static
-                                               false]
-                            trig?             [(conj trigger dep)
-                                               (conj static dep)
-                                               true]
-                            :else             [trigger
-                                               (conj static dep)
-                                               false]))
-                        [#{} [] true]
-                        deps)]
+         (let [triggers (take-while (partial = :static=) deps)
+               statics  (drop (inc (count triggers)) deps)]
            [triggers statics path func]))
        confs))
 
@@ -119,4 +115,8 @@
      :channel message-ch
      :name name}))
 
+(defn send!
+  "Send a message to an app"
+  [app message]
+  (go (>! (:channel app) message)))
 
