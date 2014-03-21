@@ -4,31 +4,32 @@
 
 
 (defn make-cell
-  [cell-name]
-  (let [state       (atom :_EMPTY_)
-        outputs     (atom [])
-        transforms  (atom {})]
-    (fn [what & args]
-      (cond
-        (= what :in)
-          (let [[topic value] (first args)]
-            (doseq [transform (@transforms topic)]
-              (let [old-state @state
-                    new-state (transform old-state topic value)]
-                (when-not (= new-state old-state)
-                  (reset! state new-state)
-                  (doseq [output @outputs]
-                    (output :in [cell-name new-state]))))))
-        (= what :state)
-          @state
-        (= what :out)
-          (swap! outputs conj (first args))
-        (= what :add-transform) 
-          (let [transform (second args)]
-          (doseq [input (first args)]
-            (swap! transforms update-in [input] conj transform)))
-        (= what :name)
-          cell-name))))
+  ([] (make-cell :_UNKNOWN-CELL_))
+  ([cell-name]
+    (let [state         (atom nil)
+            outputs     (atom [])
+            transforms  (atom {})]
+        (fn [what & args]
+          (cond
+          (= what :in)
+            (let [[topic value] (first args)]
+              (doseq [transform (@transforms topic)]
+                (let [old-state @state
+                      new-state (transform old-state topic value)]
+                  (when-not (= new-state old-state)
+                    (reset! state new-state)
+                    (doseq [output @outputs]
+                      (output :in [cell-name new-state]))))))
+          (= what :state)
+            @state
+          (= what :out)
+            (swap! outputs conj (first args))
+          (= what :add-transform) 
+            (let [transform (second args)]
+              (doseq [input (first args)]
+                (swap! transforms update-in [input] conj transform)))
+          (= what :name)
+            cell-name)))))
 
 
 (defn make-sink
