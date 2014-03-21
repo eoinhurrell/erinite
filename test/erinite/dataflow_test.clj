@@ -50,17 +50,17 @@
                          :depends [:val]
                          :output :out
                          :handler (fn [p t v d]
-                                    (println "IN H" v d)
-                                    (+ v d))}]})
+                                    (+ p v d))}]})
 
 (deftest test-make-dataflow
   (testing "create a dataflow network"
     (let [router (make-dataflow conf2)
-          ch     (chan)]
-      ((:sub router) :out ch)
+          ch     ((:sub router) :LATEST :out)]
       (>!! (:in router) [:init 5])
-      (>!! (:in router) [:test])
-      (Thread/sleep 500)
+      (>!! (:in router) [:test 10])
+      (>!! (:in router) [:test 99])
+      (Thread/sleep 10)
       (let [[[topic value] c] (alts!! [ch (timeout 50)])]
         (is (= topic :out))
-        (is (= value 10))))))
+        (is (= value 124))))))
+

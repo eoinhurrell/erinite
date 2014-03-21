@@ -1,7 +1,9 @@
 (ns erinite.dataflow
-  (:require [clojure.core.async :refer [chan pub sub tap]]
+  (:require [clojure.core.async :as async]
             [clojure.set :refer [intersection]]
-            [erinite.transform :refer [make-cell make-transform]]))
+            [clojure.core.match :refer [match]]
+            [erinite.mapping :refer [merge-maps]]
+            [erinite.transform :refer [make-cell make-sink make-transform]]))
 
 (defn make-dataflow
   "Build a dataflow network from a preprocessed configuration mapping."
@@ -12,31 +14,45 @@
                       (fn [cell] [cell (make-cell cell)])
                       outputs))
         ; Create a transform for each handler, store the inputs and channels
-        chs   (map
-                (fn [{:keys [inputs depends output opts handler]}]
-                  [inputs
-                   (make-transform
-                    (map cells depends)
-                    (get cells output)
-                    opts
-                    handler)])
-                handlers)
-        input-router      (chan)
-        input-publisher   (pub input-router first)]
+        xforms  (map
+                  (fn [{:keys [inputs depends output opts handler]}]
+                    (let [transform (make-transform
+                                      inputs
+                                      (map cells depends)
+                                      (get cells output)
+                                      opts
+                                      handler)]
+                      (into {} (map (fn [input] [input transform]) inputs))))
+                  handlers)
+        cell-map      (merge-maps xforms)
+        input-router  (async/chan 10)
+        sinks         (atom {})]
     ; Connect transform inputs to the cells that they are mapped to
     ; Publish input messages to the correct transforms
-    (doseq [[inputs ch] chs
-            input       inputs]
-      ; Inputs which are also outputs are cells, not pure messages to be routed
-      ; so these are connected to the cell they refer to.
-      ; Inputs which are not also outputs are pure messages and must be routed
-      ; to the correct transforms
-      (if (outputs input) ; True if input is also a transform output
-        (tap ((cells input) :out) ch)
-        (sub input-publisher input ch)))
+    (async/go-loop []
+      (let [msg (async/<! input-router)]
+        (if (not (nil? msg))
+          (do
+            (let [[topic value] msg]
+              (doseq [cell (cell-map topic)]
+                (cell :in msg))
+              (recur)))
+          (async/close! input-router))))
     ; Return the message router channel and the publisher
     {:in  input-router
      ; Function to subscribe to output topics by routing them to a channel
-     :sub (fn [topic ch]
-            (tap ((cells topic) :out) ch))}))
+     :sub (fn this
+            ([topic] (this :QUEUED topic))
+            ([option topic]
+              (let [sink (get @sinks topic)]
+                (if sink
+                  (let [ch (match option
+                              :QUEUED (async/chan 10)
+                              :LATEST (async/chan (async/sliding-buffer 1)))]
+                    (sink :out ch)
+                    ch)
+                  (let [new-sink (make-sink)]
+                    ((get cells topic) :out new-sink)
+                    (swap! sinks assoc topic new-sink)
+                    (this option topic))))))}))
 
