@@ -1,4 +1,4 @@
-(defproject erinite "0.1.0-SNAPSHOT"
+(defproject erinite-lib "0.1.0-SNAPSHOT"
   :description "Framework web applications"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -7,7 +7,9 @@
   :source-paths ["src/clj" "target/generated-src/clj" "target/generated-src/cljs"]
   :test-paths ["test" "target/generated-test"]
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]]
+                 [org.clojure/core.match "0.2.1"]
+                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
+                 [prismatic/schema "0.2.1"]]
 
   :cljx {:builds [{:source-paths ["src/cljx"]
                    :output-path "target/generated-src/clj"
