@@ -2,7 +2,7 @@
 
  :tdd [:shared 
        {:cljsbuild
-        {:builds {:catalyst-web
+        {:builds {:erinite-client
                   {:compiler
                    {:optimizations :whitespace
                     :pretty-print true}}}}}]
@@ -15,8 +15,9 @@
                        [enlive "1.1.5"]]
         :plugins [[com.cemerick/austin "0.1.3"]]
         :cljsbuild
-        {:builds {:catalyst-web
-                  {:source-paths ["dev-resources/tools/repl"]
+        {:builds {:erinite-client
+                  {:source-paths ["dev-resources/tools/repl"
+                                  "tools/cljs"]
                    :compiler
                    {:optimizations :whitespace
                     :pretty-print true}}}}

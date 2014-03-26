@@ -1,4 +1,4 @@
-# catalyst-web
+# erinite-client
 
 An OM project designed to ... well, that part is up to you.
 

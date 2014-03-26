@@ -7,15 +7,21 @@
             [ring.adapter.jetty :as jetty]
             [clojure.java.io :as io]))
 
-(enlive/deftemplate page
-  (io/resource "public/index.html")
+(enlive/defsnippet page
+  "public/index.html"
+  [:#erinite-content]
+  [])
+
+(enlive/deftemplate dev-page
+  (io/resource "dev/dev-index.html")
   []
   [:body] (enlive/append
-            (enlive/html [:script (browser-connected-repl-js)])))
+            (enlive/html [:script (browser-connected-repl-js)]))
+  [:#erinite-content] (enlive/content (page)))
 
 (defroutes site
-  (resources "/")
-  (GET "/*" req (page)))
+  (resources "/" {:root "dev"})
+  (GET "/*" req (dev-page)))
 
 (defn run
   "Run the ring server. It defines the server symbol with defonce."
