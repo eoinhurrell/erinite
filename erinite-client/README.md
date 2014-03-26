@@ -1,14 +1,10 @@
 # erinite-client
 
-An OM project designed to ... well, that part is up to you.
-
-## Usage
-
-FIXME
+Client-side of the Erinite project
 
 ## License
 
-Copyright © 2014 FIXME
+Copyright © 2014 Actionable Insight Software Ltd
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
