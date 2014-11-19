@@ -8,6 +8,7 @@ development of both server and client in Clojure(Script) as highly decoupled,
 reactive, composable components.
 
 **WARNING: Erinite is pre-alpha and should be considered experimental**
+
 **WARNING 2: Erinite is still very eary and does not yet meet the design goals**
 
 ## Rationale
