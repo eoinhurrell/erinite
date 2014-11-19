@@ -8,17 +8,10 @@ development of both server and client in Clojure(Script) as highly decoupled,
 reactive, composable components.
 
 **WARNING: Erinite is pre-alpha and should be considered experimental**
+**WARNING 2: Erinite is still very eary and does not yet meet the design goals**
 
 ## Rationale
 
-Most of the existing web frameworks follow the "traditional" MVC-like models and
-while they work very well for what they were designed to do, the reactive models
-used by frameworks such as Hoplon and Pedestal appear to more closely follow the
-Clojure philosophies of decomplection and simplicity. Erinite is modelled after
-these concepts and looks similar to Pedestal.
-Where Erinite hopes to set itself apart from Pedestal is through a composable
-mix-and-match component-based architecture and heavier emphasis on
-functional-reactive messaging.
 
 ## Design Goals
 
@@ -52,13 +45,6 @@ competition.
 
 ## Design Overview
 
-Erinite provides a layered architecture, splitting an application into Logic and
-Services. Services are components that talk to the outside world (client/server,
-third party services, databases, user interfaces) while Logic are functions that
-transform the application state.
-
-Both the server and client follow an identical architecture (and most of the
-implementation is shared code).
 
 ## License
 
