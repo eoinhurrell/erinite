@@ -2,13 +2,17 @@
 
 (defn push-page!
   "Move to a child page by changing the path to point at the new page"
-  [navigation page]
+  [navigation page params]
   (swap!
     (:nav-state navigation)
     (fn [{:keys [state path] :as nav}]
-      (if (contains? (->> path peek (get state) :children) page)
-        (update-in nav [:path] conj page)
-        nav))))
+      (update-in
+        (if (contains? (->> path peek (get state) :children) page)
+          (update-in nav [:path] conj page)
+          nav)
+        [:params]
+        merge
+        params))))
 
 
 (defn pop-page!
@@ -17,14 +21,19 @@
   (swap!
     (:nav-state navigation)
     (fn [nav]
-      (if-let [new-nav (update-in nav [:path] pop)]
-        new-nav
-        (assoc nav :path [(:start nav)])))))
+      (update-in
+        (let [new-nav (update-in nav [:path] pop)]
+          (if (= (:path nav) [])
+            (assoc nav :path [(:start nav)])
+            new-nav))
+        [:params]
+        dissoc
+        (get-in nav [:state (:path nav) :params])))))
 
 
 (defn set-page!
   "Move to a page named by path by changing the path to point to the new page"
-  [navigation page-name]
+  [navigation page-name params]
   (swap!
     (:nav-state navigation)
     (fn [{:keys [state start]}]
@@ -33,22 +42,26 @@
           (recur (conj path parent))
           {:path (into [] path)
            :start start
+           :params params
            :state state})))))
 
 
 (defn page
   "Return the page state for a page given by the current path"
   [{:keys [nav-state]}]
-  (let [{:keys [state path]} @nav-state]
-    (reduce
-      (fn [{:keys [view] :as s} page]
-        (let [page-state (get state page)]
-          (assoc
-            (merge s (dissoc page-state :sync))  ; merge all state except ':sync'
-            :view (merge view (:view page-state)); merge content of view
-            :children (:children page-state))))  ; overwrite children
-      {}
-      path)))
+  (let [{:keys [state path params]} @nav-state]
+    (assoc
+      (reduce
+        (fn [{:keys [view] :as s} page]
+          (let [page-state (get state page)]
+            (assoc
+              (merge s (dissoc page-state :sync))  ; merge all state except ':sync'
+              :view (merge view (:view page-state)); merge content of view
+              :children (:children page-state))))  ; overwrite children
+        {}
+        path)
+      :params
+      params)))
 
 
 (defn pages

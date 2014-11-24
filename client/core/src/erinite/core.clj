@@ -5,11 +5,15 @@
   (let [opts-map? (map? opts)
         sel       (if opts-map? (:sel opts) opts)
         page      (when opts-map? (:page opts))
-        data      (when opts-map? (:data opts))]
+        data      (when opts-map? (:data opts))
+        pre       (when opts-map? (:pre opts))]
     `(~`kioo.om/component
        ~html-file ~sel
        ~(merge
-          `{[:control] ~`erinite.internal.template-transform/replace-control}    
+          `{[:control]
+              (partial
+                ~`erinite.internal.template-transform/replace-control
+                ~pre)}
           (when (and page data)
             `{[:placeholder]
               (partial
@@ -23,5 +27,7 @@
   [html-file & [selector]]
   (let [selector (if (nil? selector) [:.base] selector)]
     `(fn [page# data#]
-      (template ~html-file {:sel ~selector :page page# :data data#}))))
+      (template ~html-file {:sel ~selector
+                            :page page#
+                            :data data#}))))
 

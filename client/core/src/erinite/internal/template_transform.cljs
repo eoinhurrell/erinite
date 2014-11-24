@@ -15,16 +15,29 @@
 
 
 (defn replace-control
-  [node]
-  (let [attrs   (into {}
+  [pre node]
+  (let [node    (if pre
+                  (let [xclass  (->> node :attrs :className (str ".") keyword)
+                        xid     (->> node :attrs :id        (str "#") keyword)]
+                    (-> node
+                        ((get pre xclass identity))
+                        ((get pre xid identity))))
+                  node)
+        attrs   (:attrs node)
+        attrs   (into {}
                   (map
                     (fn [[k v]]
-                      (let [a (name k)]
-                        (if (and (> (count a) 3)
-                                 (= (subs a 0 3) "on-"))
-                          [k (events/send (keyword v))]
+                      (let [a (name k)
+                            c (count a)]
+                        (if (and (> c 3)
+                                 (= (subs a 0 3) "on-")
+                                 (not (and (> c 9)
+                                           (= (subs a (- c 6) "-param")))))
+                          [k (events/send
+                               (keyword v)
+                               (get attrs (keyword (str a "-param"))))]
                           [k v])))
-                    (:attrs node)))
+                    attrs))
         c-type  (keyword (:type attrs))
         config  (assoc
                   (dissoc attrs :type :event :class)

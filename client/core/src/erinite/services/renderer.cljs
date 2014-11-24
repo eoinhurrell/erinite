@@ -7,8 +7,10 @@
             [erinite.internal.state :as state]
             [erinite.lib.events :as events]))
 
+
 (defn invalid-renderer [page data]
   (dom/div nil "INVALID RENDERER"))
+
 
 (defn erinite-root-component
   "The Erinite management and Om root component.
@@ -25,15 +27,20 @@
     (will-mount [_]
       (events/listen!
         {:Navigation/page-changed
-            (fn [_ state]
-              (om/set-state! owner :current-page (assoc state :view-components views)))
+            (fn [path page]
+              (om/set-state! owner
+                :current-page
+                (assoc page :view-components views)))
          :Renderer/set
             (fn [new-renderer]
-              (om/set-state! owner :renderer new-renderer))}))
+              (om/set-state! owner
+                :renderer
+                (get renderers new-renderer invalid-renderer)))}))
 
     om/IRenderState 
     (render-state [_ {:keys [current-page renderer]}]
-      ((get renderers renderer invalid-renderer) current-page data))))
+      (renderer current-page data))))
+
 
 (defrecord Renderer [om-config navigation]
   component/Lifecycle
@@ -50,7 +57,7 @@
                            (. js/document -body)
                            (. js/document (getElementById target)))
                  :shared shared-data-
-                 :init-state {:renderer renderer}
+                 :init-state {:renderer (get renderers renderer)}
                  :opts {:renderers  renderers
                         :views      views}}]
     (map->Renderer {:om-config config})))

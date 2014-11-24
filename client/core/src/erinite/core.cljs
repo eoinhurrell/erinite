@@ -19,6 +19,15 @@
          (js->clj event-data)))
 
 
+(defn basic-renderer
+  "A basic rendeder implementation that simply renders the :content view to
+   the page, passing in the data cursor and state"
+  [{:keys [view view-components] :as page} data]
+  ((get view-components (:content view))
+    data
+    {:state {:current-page (dissoc page :view-components)}}))
+
+
 (defn ^:private gen-system-map
   "Take in a spec and a config map and return a component system map.
    spec:  {:component-name component-ctor
