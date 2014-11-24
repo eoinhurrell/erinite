@@ -9,7 +9,7 @@ reactive, composable components.
 
 **WARNING: Erinite is pre-alpha and should be considered experimental**
 
-**WARNING 2: Erinite is still very eary and does not yet meet the design goals**
+**WARNING 2: Erinite is still very early and does not yet meet the design goals**
 
 ## Rationale
 
