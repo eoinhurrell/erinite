@@ -39,9 +39,11 @@
   "Send an event with `topic` and `values`"
   [topic & values]
   (async/put! events-ch [topic values])
-  ; If topic is namespaced, also send un-namespaced event
+  ;; If topic is namespaced, also send un-namespaced event
   (when (namespace topic) 
-    (async/put! events-ch [(keyword (name topic)) values])))
+    (async/put! events-ch [(keyword (name topic)) values]))
+  ;; Return false when done, so it can be used in anchor click handlres
+  false)
 
 (defn send
   "Returns a function which, when called, sends events"

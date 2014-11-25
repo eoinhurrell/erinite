@@ -30,12 +30,17 @@
             (fn [path page]
               (om/set-state! owner
                 :current-page
-                (assoc page :view-components views)))
+                (assoc page
+                  :view-components views
+                  :id (last path))))
          :Renderer/set
             (fn [new-renderer]
               (om/set-state! owner
                 :renderer
-                (get renderers new-renderer invalid-renderer)))}))
+                (get renderers new-renderer invalid-renderer)))
+         :State/set
+            (fn [where what]
+              (om/update! data where what))}))
 
     om/IRenderState 
     (render-state [_ {:keys [current-page renderer]}]

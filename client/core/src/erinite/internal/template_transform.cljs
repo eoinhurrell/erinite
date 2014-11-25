@@ -3,14 +3,28 @@
             [om.dom :as dom :include-macros true]
             [shodan.console :as console :include-macros true]
             [bootstrap-cljs :as bs :include-macros true]
+            [erinite.lib.animation :refer [transition-group]]
             [erinite.lib.events :as events]))
 
 (defn replace-placeholder
   [{:keys [view view-components] :as current-page} data node]
-  (let [component-id (->> [:attrs :id] (get-in node) keyword (get view))]
-    (if-let [component (get view-components component-id)]
-      (component data {:state {:current-page (dissoc current-page
-                                                     :view-components)}})
+  (let [view-element  (get-in node [:attrs :id])
+        component-id  (->> view-element keyword (get view))]
+    (if-let [component-ctor (get view-components component-id)]
+      (let [component (component-ctor
+                        data
+                        {:state {:current-page (dissoc current-page
+                                                       :view-components)}
+                         :react-key component-id})
+            enter-anim?   (if (get-in node [:attrs :enter-anim]) true false)
+            leave-anim?   (if (get-in node [:attrs :leave-anim]) true false)]
+        (if (or enter-anim? leave-anim?)
+          (transition-group
+            {:name (name view-element)
+             :enter enter-anim?
+             :leave leave-anim?}
+            component)
+          component))
       (:content node))))
 
 
@@ -29,19 +43,24 @@
                     (fn [[k v]]
                       (let [a (name k)
                             c (count a)]
-                        (if (and (> c 3)
-                                 (= (subs a 0 3) "on-")
-                                 (not (and (> c 9)
-                                           (= (subs a (- c 6) "-param")))))
-                          [k (events/send
-                               (keyword v)
-                               (get attrs (keyword (str a "-param"))))]
-                          [k v])))
+                        (cond
+                          ;; If attr ends with -param, remove it from the attrs
+                          (and (> c 9) (= (subs a (- c 6) "-param")))
+                              [::_ nil] ; This will be removed
+                          ;; If attr starts with on- then convert it into an
+                          ;; event handler function
+                          (and (> c 3) (= (subs a 0 3) "on-"))
+                              [k  (events/send
+                                    (keyword v)
+                                    ;; If an attr exists with name <k>-param
+                                    ;; then use its value as the parameter to
+                                    ;; the event sent by this handler function
+                                    (get attrs (keyword (str a "-param"))))]
+                          ;; Otherwise leave attr as is
+                          :otherwise [k v])))
                     attrs))
         c-type  (keyword (:type attrs))
-        config  (assoc
-                  (dissoc attrs :type :event :class)
-                  :className (:class attrs))
+        config  (dissoc attrs :type ::_)
         content (:content node)]
   (case c-type
     :accordion       (bs/accordion config content)
