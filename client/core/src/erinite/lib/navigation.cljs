@@ -21,14 +21,15 @@
   (swap!
     (:nav-state navigation)
     (fn [nav]
-      (update-in
+      (apply
+        update-in
         (let [new-nav (update-in nav [:path] pop)]
           (if (= (:path nav) [])
             (assoc nav :path [(:start nav)])
             new-nav))
         [:params]
         dissoc
-        (get-in nav [:state (:path nav) :params])))))
+        (get-in nav [:state (peek (:path nav)) :params])))))
 
 
 (defn set-page!
@@ -47,27 +48,22 @@
 
 
 (defn page
-  "Return the page state for a page given by the current path"
-  [{:keys [nav-state]}]
-  (let [{:keys [state path params]} @nav-state]
-    (assoc
-      (reduce
-        (fn [{:keys [view] :as s} page]
-          (let [page-state (get state page)]
-            (assoc
-              (merge s (dissoc page-state :sync))  ; merge all state except ':sync'
-              :view (merge view (:view page-state)); merge content of view
-              :children (:children page-state))))  ; overwrite children
-        {}
-        path)
-      :params
-      params)))
-
-
-(defn pages
-  "Return a list of keywords naming all child pages of the current page"
-  [navigation]
-  (:children (page navigation)))
+  "Return the page state for a page given by the current path
+   NOTE: This function takes `nav-state` as its argument, not the navigation
+   component like the other functions do."
+  [{:keys [state path params]}]
+  (assoc
+    (reduce
+      (fn [{:keys [view] :as s} page]
+        (let [page-state (get state page)]
+          (assoc
+            (merge s (dissoc page-state :sync))  ; merge all state except ':sync'
+            :view (merge view (:view page-state)); merge content of view
+            :children (:children page-state))))  ; overwrite children
+      {}
+      path)
+    :params
+    params))
 
 
 (defn set-parents

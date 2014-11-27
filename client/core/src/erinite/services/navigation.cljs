@@ -31,7 +31,7 @@
   (let [old-path (:path old-state)
         new-path (:path new-state)]
     (when (not= old-path new-path)
-      (let [page          (nav/page component)
+      (let [page          (nav/page new-state)
             state         (:state new-state)
             append-params (fn [page-id]
                             (concat
@@ -127,7 +127,7 @@
        :Erinite/start 
           #(events/send! :Navigation/page-changed
                          (:path @nav-state)
-                         (nav/page component))})
+                         (nav/page @nav-state))})
     ;; Handle initial page load
     (handle-page-load {:root (:start @nav-state)})
     component)

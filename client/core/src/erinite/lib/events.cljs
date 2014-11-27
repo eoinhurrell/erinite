@@ -20,18 +20,23 @@
   "Listen for events with `topic`,  calling `callback` with their value.
    Alternatively, can take a map {topic callback} to define multiple listeners."
   ([topic-map]
-   (doseq [[topic callback] topic-map]
-     (listen! topic callback)))
+    (let [kill-ch (async/chan)
+         kill-mult (async/mult kill-ch)]
+      (doseq [[topic callback] topic-map]
+        (async/tap kill-mult (listen! topic callback)))
+      kill-ch))
+
   ([topic callback! & [kill-mult]]
     (let [channel (async/chan (async/sliding-buffer 10))]
       ;; Subscribe to the correct topic
       (async/sub events-pub topic channel) 
       ;; Receive events and call the callback
       (go-loop []
-        (when-let [[topic values] (async/<! channel)]
-          (apply callback! values)
-          (recur))
-        (async/unsub events-pub topic channel))
+        (if-let [[topic values] (async/<! channel)]
+          (do
+            (apply callback! values)
+            (recur))
+          (async/unsub events-pub topic channel)))
       ;; Return the listener channel, so it can be closed to kill the listener
       channel)))
 
