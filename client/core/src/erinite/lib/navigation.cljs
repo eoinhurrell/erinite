@@ -77,16 +77,16 @@
     If direction is :backward, then move backward one more time"
   [{:keys [path structure] :as nav} direction]
   (let [[doc page] (peek path)]
-    (if (= page :*) ; If this is a root page
-      (if-let [default (get-in structure [doc page :default])] ; default is set
-        (case direction
-          ;; For forward, add the default to the path
-          :forward  (update-in nav [:path] conj [doc default])
-          ;; For backward, move backward one more time
-          :backward (backward* nav doc))
-      ;; Both else cases, leave nav unchanged (not root or no default set)
-        nav)
-      nav))) 
+    (if-let [default (and
+                       (= page :*)                             ; doc root, and
+                      (get-in structure [doc page :default]))] ; default is set
+      (case direction
+        ;; For forward, add the default to the path
+        :forward  (update-in nav [:path] conj [doc default])
+        ;; For backward, move backward one more time
+        :backward (backward* nav doc))
+      ;; Not a doc root or no default set, so leave unchanged
+      nav)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
