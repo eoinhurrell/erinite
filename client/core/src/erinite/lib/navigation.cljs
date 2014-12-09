@@ -71,19 +71,22 @@
   
 
 (defn fix-doc-root*
-  "If the page is the doc root, then the page may need to be modified
-    If direction is :forward, then if the root has a :default set, change the
-    page to the :default instead.
+  "If the page is the doc roo and it has :default set then the page must be
+   modified.
+    If direction is :forward, then change the page to the :default instead.
     If direction is :backward, then move backward one more time"
   [{:keys [path structure] :as nav} direction]
   (let [[doc page] (peek path)]
-    (if (= page :*)
-      (case direction
-        :forward  (if-let [default (get-in structure [doc page :default])]
-                    (update-in nav [:path] conj [doc default])
-                    nav)
-        :backward (backward* nav doc))
-      nav)))
+    (if (= page :*) ; If this is a root page
+      (if-let [default (get-in structure [doc page :default])] ; default is set
+        (case direction
+          ;; For forward, add the default to the path
+          :forward  (update-in nav [:path] conj [doc default])
+          ;; For backward, move backward one more time
+          :backward (backward* nav doc))
+      ;; Both else cases, leave nav unchanged (not root or no default set)
+        nav)
+      nav))) 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
