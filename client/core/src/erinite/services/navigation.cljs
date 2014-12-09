@@ -44,7 +44,7 @@
                             flatten
                             (clojure.string/join "/")
                             (str "/"))]
-        (push-state! {:root (:start new-state)} (:title page) path)
+        (push-state! {:root (:root new-state)} (:title page) path)
         (events/send! :Navigation/page-changed new-path page)))))
 
 
@@ -72,17 +72,11 @@
   (let [page        (get state (keyword page-id))
         param-list  (:params page)]
     (vector
-      ;; Keep the page-id and one
-      ;; remaining item from the path
-      ;; for each parameter
+      ;; Keep the page-id and one remaining item from the path for each parameter
       (vector
         page-id
-        (into params (map
-                       vector
-                       param-list
-                       remaining)))
-      ;; Drop the parameters from the
-      ;; remaining items in the path
+        (into params (map vector param-list remaining)))
+      ;; Drop the parameters from the remaining items in the path
       (drop (count param-list)
             remaining))))
 
@@ -103,13 +97,7 @@
     (set! (.-onpopstate js/window) pop-state)
     ;; Listen to events to manipulate the navigation state
     (events/listen!
-      {;; Set the page to a specific page
-       :Navigation/set  (page-change-helper component nav/set-page!) 
-       ;; Set te page to a specific subpage
-       :Navigation/push (page-change-helper component nav/push-page!) 
-       ;; Set the page to the parent page
-       :Navigation/pop  #(nav/pop-page! component)
-       ;; Set the page to a specific page, named by a path
+      {;; Set the page to a specific page, named by a path
        :Navigation/load (fn [path]
                           (let [state (:state @nav-state)
                                 ;; Get the page and parameters by consuming the
@@ -123,22 +111,39 @@
                             (nav/set-page! component
                                            (keyword new-page)
                                            params)))
+       ;; Set te page to a specific subpage
+       :Navigation/forward  (fn [])
+       ;; Set the page to the parent page
+       :Navigation/back     (fn [])
+       ;; Set the page to a specific page (relative to the open document)
+       :Navigation/go-to    (fn [])
+       ;; Close the current document, setting the page to latest in previous doc
+       :Navigation/close    (fn [])
+       ;; Close all open documents and open a new document, set page to root
+       :Navigation/set-document (fn [])
+
+       ;; Set the page to a specific page
+       :Navigation/set  (page-change-helper component nav/set-page!) 
+       ;; Set te page to a specific subpage
+       :Navigation/push (page-change-helper component nav/push-page!) 
+       ;; Set the page to the parent page
+       :Navigation/pop  #(nav/pop-page! component)
        ;; Emit page-changed event so the system knows about the starting page
        :Erinite/start 
           #(events/send! :Navigation/page-changed
                          (:path @nav-state)
                          (nav/page @nav-state))})
     ;; Handle initial page load
-    (handle-page-load {:root (:start @nav-state)})
+    (handle-page-load {:root (:root @nav-state)})
     component)
 
   (stop [component]
     (assoc component :nav-state nil)))
 
 
-(defn navigation-srv [{:keys [pages start-page]}]
-  (map->Navigation {:nav-state (atom {:path [start-page]
-                                      :start start-page
+(defn navigation-srv [{:keys [pages root-page]}]
+  (map->Navigation {:nav-state (atom {:path [root-page]
+                                      :root root-page
                                       :params {}
                                       :state (nav/set-parents pages)})})) 
 

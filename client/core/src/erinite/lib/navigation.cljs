@@ -1,5 +1,173 @@
 (ns erinite.lib.navigation)
 
+(comment
+  root-page-info  {:children "set of child pages"
+                   :default "default page if root invisible, omitted if not"
+                   :view    "map of placeholder ids to view ids"}
+  page-info       {:children "set of child pages"
+                   :view    "map of placeholder ids to view ids"}
+  document-structure {document-name {:*         root-page-info
+                                     page-name  page-info}}
+
+  {:params "map of parameter ids to parameter values"
+   :docs "stack (vector) of open documents"
+   :path "stack (vector) of open pages"  ; Stored as vec of [doc page] pairs
+   :structure document-structure }
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Helpers
+
+
+(defn make-nav-state
+  "Create navigation structure"
+  [document-structure initial-document]
+  {:params    {}
+   :path      [[initial-document :*]]
+   :structure document-structure})
+
+
+(defn close*
+  "Close current document by stripping it from path"
+  [{:keys [path] :as nav}]
+  (let [[current-doc _] (peek path)
+        reverse-path    (rseq path) ; Reverse so current doc can be removed
+        prev-doc-path   (into [] (drop-while ; Remove current document
+                                   #(= current-doc (first %))
+                                   reverse-path))
+        new-path        (vec (rseq prev-doc-path))]
+    ;; Replace path with new path, but make sure it cannot be empty
+    (assoc nav :path (if (empty? new-path) [[current-doc :*]] new-path))))
+
+
+(defn forward*
+  "Navigate page forward by updating path"
+  [{:keys [path structure] :as nav} page-keyword]
+  (let [[current-doc _] (peek path)
+        doc             (namespace page-keyword)
+        ;; If the page was namespaced, get the page portion
+        new-page        (if doc (keyword (name page-keyword)) page-keyword)
+        ;; If namespaced, get the namespace, otherwise use current doc
+        new-doc         (if doc (keyword doc) current-doc)
+        ;; Get children of current page
+        children        (->> path peek (get-in structure) :children)
+        ;; New path entry is a pair of [document page]
+        path-entry      [new-doc new-page]]
+    (if (or (and (= current-doc new-doc)        ; If page is not another doc 
+                 (contains? children new-page)) ; ..and page is in doc
+            (contains? children page-keyword))  ; OR page is in another doc
+      (update-in nav [:path] conj path-entry)   ; Then add page to path.
+      nav)))  ; Otherwise page is not in doc nor in another doc, do nothing
+
+
+(defn backward*
+  "Navigate page backward by removing current page from end of path"
+  [{:keys [path] :as nav} current-doc]
+  (let [new-path      (pop path) 
+        ;; If the new path is empty, set it to root page of current doc
+        new-path      (if (= new-path []) [[current-doc :*]] new-path) 
+        [new-doc _]   (peek new-path)   ; Get the new document from the path
+        new-nav       (assoc nav :path new-path)] ; Set the new path
+    (if (= new-doc current-doc)         ; If new doc is same as old doc
+      new-nav                           ; then no other changes needed
+      (update-in new-nav [:docs] pop)))); Otherwise close document
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Page API
+
+
+(defn forward!
+  "Go to a child page (may open new document)"
+  [navigation page-keyword params]
+  (swap!
+    (:nav-state navigation)
+    (fn [nav]
+      ; Navigate page forward and merge in new parameters
+      (update-in (forward* nav page-keyword) [:params] merge params))))
+
+
+(defn backward!
+  "Go to the parent page (may close an open document)"
+  [navigation]
+  (swap!
+    (:nav-state navigation)
+    (fn [{:keys [path] :as nav}]
+      (let [[current-doc page] (peek path)]
+        (apply
+          update-in
+          (backward* nav current-doc)
+          [:params] ; Remove old parameters
+          dissoc
+          ;; Old parameters to remove are the parameters from old page
+          (get-in nav [:structure current-doc page :params]))))))
+
+
+(defn go-to!
+  "Go to a child page, relative to the root of the open document"
+  [navigation new-path params]
+  (swap!
+    (:nav-state navigation)  
+    (fn [{:keys [path] :as nav}]
+      (let [; Close current document
+            previous-document (close* nav) 
+            ; Create new path within now-closed document
+            [current-doc _] (peek path)
+            new-path        (into [[current-doc :*]]
+                                  (map #(vector current-doc %) new-path))]
+        ; And add new path in, effectively reopening it on new path
+        (update-in previous-document [:path] (comp vec concat) new-path)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Document API
+
+
+(defn close!
+  "Close open document"
+  [navigation]
+  (swap!
+    (:nav-state navigation)
+    close*))
+
+
+(defn set-document!
+  "Close all open doucments and open new document"
+  [navigation document]
+  (swap!
+    (:nav-state navigation)
+    (fn [nav]
+      (assoc nav :path [[document :*]]))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Data retrieval
+
+(defn details
+  "Get the page details by merging current page with all parent pages"
+  [navigation]
+  (let [{:keys [docs path structure params]} @(:nav-state navigation)]
+    (assoc
+      (reduce
+        (fn [{:keys [view] :as s} doc-page-vec]
+          (let [page-details (get-in structure doc-page-vec)]
+            (assoc
+              (merge  s (dissoc page-details :sync)) ; Merge all but :sync
+              :view (merge view (:view page-details)); Merge content of :view
+              :children (:children page-details)     ; Force overwrite :children
+              :default  (:default page-details))))   ; ...and :default
+        {}
+        path)
+      :params
+      params)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
+
+
 (defn push-page!
   "Move to a child page by changing the path to point at the new page"
   [navigation page params]
@@ -25,7 +193,7 @@
         update-in
         (let [new-nav (update-in nav [:path] pop)]
           (if (= (:path nav) [])
-            (assoc nav :path [(:start nav)])
+            (assoc nav :path [(:root nav)])
             new-nav))
         [:params]
         dissoc
@@ -37,12 +205,12 @@
   [navigation page-name params]
   (swap!
     (:nav-state navigation)
-    (fn [{:keys [state start]}]
+    (fn [{:keys [state root]}]
       (loop [path (list page-name)]
         (if-let [parent (->> path first (get state) :parent)]
           (recur (conj path parent))
           {:path (into [] path)
-           :start start
+           :root root
            :params params
            :state state})))))
 

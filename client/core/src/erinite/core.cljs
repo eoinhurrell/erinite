@@ -62,9 +62,9 @@
         system-spec       (merge (or (:services attrs) {}) builtin-services)
         system-map        (gen-system-map system-spec attrs)
         ;; Get mandatory attributes
-        {:keys [target renderers renderer views start-page]} attrs]
+        {:keys [target renderers renderer views root-page]} attrs]
     ;; Make sure mandatory attributes are set
-    (assert (not (some nil? [target renderers renderer views start-page]))
+    (assert (not (some nil? [target renderers renderer views root-page]))
             "Mandatory attributes must not be nil")
     ;; Connect all event handlers
     (events/listen! (last args))
