@@ -66,11 +66,24 @@
   (let [new-path      (pop path) 
         ;; If the new path is empty, set it to root page of current doc
         new-path      (if (= new-path []) [[current-doc :*]] new-path) 
-        [new-doc _]   (peek new-path)   ; Get the new document from the path
-        new-nav       (assoc nav :path new-path)] ; Set the new path
-    (if (= new-doc current-doc)         ; If new doc is same as old doc
-      new-nav                           ; then no other changes needed
-      (update-in new-nav [:docs] pop)))); Otherwise close document
+        [new-doc _]   (peek new-path)]   ; Get the new document from the path
+    (assoc nav :path new-path))) ; Set the new path
+  
+
+(defn fix-doc-root*
+  "If the page is the doc root, then the page may need to be modified
+    If direction is :forward, then if the root has a :default set, change the
+    page to the :default instead.
+    If direction is :backward, then move backward one more time"
+  [{:keys [path structure] :as nav} direction]
+  (let [[doc page] (peek path)]
+    (if (= page :*)
+      (case direction
+        :forward  (if-let [default (get-in structure [doc page :default])]
+                    (update-in nav [:path] conj [doc default])
+                    nav)
+        :backward (backward* nav doc))
+      nav)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,7 +97,9 @@
     (:nav-state navigation)
     (fn [nav]
       ; Navigate page forward and merge in new parameters
-      (update-in (forward* nav page-keyword) [:params] merge params))))
+      (-> (forward* nav page-keyword)
+          (update-in [:params] merge params)
+          (fix-doc-root* :forward)))))
 
 
 (defn backward!
@@ -96,7 +111,8 @@
       (let [[current-doc page] (peek path)]
         (apply
           update-in
-          (backward* nav current-doc)
+          (-> (backward* nav current-doc)
+              (fix-doc-root* :backward))
           [:params] ; Remove old parameters
           dissoc
           ;; Old parameters to remove are the parameters from old page
@@ -116,7 +132,9 @@
             new-path        (into [[current-doc :*]]
                                   (map #(vector current-doc %) new-path))]
         ; And add new path in, effectively reopening it on new path
-        (update-in previous-document [:path] (comp vec concat) new-path)))))
+        (-> previous-document
+            (update-in [:path] (comp vec concat) new-path)
+            (fix-doc-root* :forward))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -128,7 +146,7 @@
   [navigation]
   (swap!
     (:nav-state navigation)
-    close*))
+    (comp #(fix-doc-root* % :forward) close*)))
 
 
 (defn set-document!
@@ -137,7 +155,9 @@
   (swap!
     (:nav-state navigation)
     (fn [nav]
-      (assoc nav :path [[document :*]]))))
+      (-> nav
+          (assoc :path [[document :*]])
+          (fix-doc-root* :forward)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Data retrieval
