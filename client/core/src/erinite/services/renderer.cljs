@@ -32,7 +32,7 @@
                 :current-page
                 (assoc page
                   :view-components views
-                  :id (last path))))
+                  :id (apply keyword (peek path)))))
          :Renderer/set
             (fn [new-renderer]
               (om/set-state! owner

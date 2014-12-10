@@ -18,7 +18,7 @@
   (let [pathname  (.. js/window -location -pathname)
         path      (next (clojure.string/split pathname #"/"))]
     (events/send! :Navigation/load
-                  (or path [(name (:root state))]))))
+                  (or path [(name (:default state))]))))
 
 
 (defn pop-state [e]
@@ -31,20 +31,21 @@
   (let [old-path (:path old-state)
         new-path (:path new-state)]
     (when (not= old-path new-path)
-      (let [page          (nav/page new-state)
-            state         (:state new-state)
-            append-params (fn [page-id]
+      (let [page          (nav/details new-state)
+            structure     (:structure new-state)
+            append-params (fn [[doc-id page-id]]
                             (concat
-                              [(name page-id)]
+                              (conj path
+                                    (name (if (= page-id :*) doc-id page-id)))
                               (map
-                                #(get (:params page) %)
-                                (get-in state [page-id :params]))))
+                                #(get (:params page) % "")
+                                (get-in structure [page-id :params]))))
             path          (->> new-path
                             (map append-params)
                             flatten
                             (clojure.string/join "/")
                             (str "/"))]
-        (push-state! {:root (:root new-state)} (:title page) path)
+        (push-state! {:default (:default-document new-state)} (:title page) path)
         (events/send! :Navigation/page-changed new-path page)))))
 
 
@@ -66,19 +67,24 @@
 
 
 (defn consume-path
-  [state [_ params] page-id remaining]
-  ;; Look up what parameters this page
-  ;; expects
-  (let [page        (get state (keyword page-id))
-        param-list  (:params page)]
-    (vector
-      ;; Keep the page-id and one remaining item from the path for each parameter
-      (vector
-        page-id
-        (into params (map vector param-list remaining)))
-      ;; Drop the parameters from the remaining items in the path
-      (drop (count param-list)
-            remaining))))
+  [navigation structure null page-id remaining]
+  ;; Look up what parameters this page expects
+  (let [page-id       (keyword page-id)
+        page          (get structure page-id)
+        param-list    (:params page)
+        ;; Retrieve list of items for parameters actually present on path
+        parameters    (take-while ; Keep taking from list while there
+                        #(not= % "") ; If empty item, then there are no more
+                        ;; Maximum number of params is number in param-list
+                        (take (count param-list) remaining))]
+    ;; Navigate forward one page
+    (nav/forward!
+      navigation
+      page-id
+      ;; Create map of parameters name to value
+      (into {} (map vector param-list parameters)))
+    ;; Strip parameters from remaining path 
+    [nil (drop (count parameters) remaining)]))
 
 
 (defn page-change-helper
@@ -91,6 +97,7 @@
 (defrecord Navigation [nav-state]
   component/Lifecycle
   (start [component]
+    (try
     ;; Watch state for changes so that page-changed events can be emitted
     (add-watch nav-state :nav-state (partial nav-state-watcher component))
     ;; Handle pop state browser events
@@ -99,51 +106,43 @@
     (events/listen!
       {;; Set the page to a specific page, named by a path
        :Navigation/load (fn [path]
-                          (let [state (:state @nav-state)
-                                ;; Get the page and parameters by consuming the
-                                ;; path page by page and extracting the required
-                                ;; parameters from each
-                                [new-page params] (consume
-                                                    (partial consume-path state)
-                                                    [nil {}]
-                                                    path)]
-                            ;; Change to the new page, passing the params along
-                            (nav/set-page! component
-                                           (keyword new-page)
-                                           params)))
+                          (println "LOADING PATH:" path)
+                          (let [structure (:structure @nav-state)]
+                            ;; Navigate along the path by consuming the path
+                            ;; page by page an extracting the required
+                            ;; parameters from each and then navigating forward
+                            ;; for each page
+                            (println "Consuming")
+                            (consume
+                              (partial consume-path component structure)
+                              nil
+                              path)
+                            (println "Done consuming")))
        ;; Set te page to a specific subpage
-       :Navigation/forward  (fn [])
+       :Navigation/forward  (page-change-helper component nav/forward!)
        ;; Set the page to the parent page
-       :Navigation/back     (fn [])
+       :Navigation/back     #(nav/backward! component)
        ;; Set the page to a specific page (relative to the open document)
-       :Navigation/go-to    (fn [])
+       :Navigation/go-to    (page-change-helper component nav/go-to!)
        ;; Close the current document, setting the page to latest in previous doc
-       :Navigation/close    (fn [])
+       :Navigation/close    #(nav/close! component)
        ;; Close all open documents and open a new document, set page to root
-       :Navigation/set-document (fn [])
-
-       ;; Set the page to a specific page
-       :Navigation/set  (page-change-helper component nav/set-page!) 
-       ;; Set te page to a specific subpage
-       :Navigation/push (page-change-helper component nav/push-page!) 
-       ;; Set the page to the parent page
-       :Navigation/pop  #(nav/pop-page! component)
+       :Navigation/set-document (page-change-helper component nav/set-document!)
        ;; Emit page-changed event so the system knows about the starting page
        :Erinite/start 
           #(events/send! :Navigation/page-changed
                          (:path @nav-state)
-                         (nav/page @nav-state))})
+                         (nav/details @nav-state))})
     ;; Handle initial page load
-    (handle-page-load {:root (:root @nav-state)})
-    component)
+    (handle-page-load {:default (:default-document @nav-state)})
+    component
+    (catch js/Error e
+      (js/console.log e))))
 
   (stop [component]
     (assoc component :nav-state nil)))
 
 
-(defn navigation-srv [{:keys [pages root-page]}]
-  (map->Navigation {:nav-state (atom {:path [root-page]
-                                      :root root-page
-                                      :params {}
-                                      :state (nav/set-parents pages)})})) 
+(defn navigation-srv [{:keys [documents root-document]}]
+  (map->Navigation {:nav-state (atom (nav/make-nav-state documents root-document))})) 
 

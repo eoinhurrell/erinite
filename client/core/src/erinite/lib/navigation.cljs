@@ -22,9 +22,10 @@
 (defn make-nav-state
   "Create navigation structure"
   [document-structure initial-document]
-  {:params    {}
-   :path      [[initial-document :*]]
-   :structure document-structure})
+  {:params            {}
+   :default-document  initial-document
+   :path              [[initial-document :*]]
+   :structure         document-structure})
 
 
 (defn close*
@@ -43,14 +44,29 @@
 (defn forward*
   "Navigate page forward by updating path"
   [{:keys [path structure] :as nav} page-keyword]
+  (println "Path:" path)
+  (println "Structure:" structure)
   (let [[current-doc _] (peek path)
+        ;; Get children of current page
+        children        (->> path peek (get-in structure) :children)
+        ;; Get the document that the new page is in
         doc             (namespace page-keyword)
+        ;; If the page is a document name, the document name exists and the
+        ;; current page has that document root as a child, then the document
+        ;; name is a valid shortcut for :document-name/*
+        [doc page-keyword]  (if (and (empty? doc) ; Document not specified
+                                     ;; And page is a valid document name
+                                     (contains? structure page-keyword)
+                                     ;; And document root is a child
+                                     (contains?
+                                        children
+                                        (keyword (name page-keyword) "*")))
+                          [page-keyword "*"]  ; Then replace with this doc
+                          [doc page-keyword]) ; Otherwise leave unchanged
         ;; If the page was namespaced, get the page portion
         new-page        (if doc (keyword (name page-keyword)) page-keyword)
         ;; If namespaced, get the namespace, otherwise use current doc
         new-doc         (if doc (keyword doc) current-doc)
-        ;; Get children of current page
-        children        (->> path peek (get-in structure) :children)
         ;; New path entry is a pair of [document page]
         path-entry      [new-doc new-page]]
     (if (or (and (= current-doc new-doc)        ; If page is not another doc 
@@ -154,7 +170,7 @@
 
 (defn set-document!
   "Close all open doucments and open new document"
-  [navigation document]
+  [navigation document & [params]]
   (swap!
     (:nav-state navigation)
     (fn [nav]
@@ -167,21 +183,20 @@
 
 (defn details
   "Get the page details by merging current page with all parent pages"
-  [navigation]
-  (let [{:keys [docs path structure params]} @(:nav-state navigation)]
-    (assoc
-      (reduce
-        (fn [{:keys [view] :as s} doc-page-vec]
-          (let [page-details (get-in structure doc-page-vec)]
-            (assoc
-              (merge  s (dissoc page-details :sync)) ; Merge all but :sync
-              :view (merge view (:view page-details)); Merge content of :view
-              :children (:children page-details)     ; Force overwrite :children
-              :default  (:default page-details))))   ; ...and :default
-        {}
-        path)
-      :params
-      params)))
+  [{:keys [docs path structure params]}]
+  (assoc
+    (reduce
+      (fn [{:keys [view] :as s} doc-page-vec]
+        (let [page-details (get-in structure doc-page-vec)]
+          (assoc
+            (merge  s (dissoc page-details :sync)) ; Merge all but :sync
+            :view (merge view (:view page-details)); Merge content of :view
+            :children (:children page-details)     ; Force overwrite :children
+            :default  (:default page-details))))   ; ...and :default
+      {}
+      path)
+    :params
+    params))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
