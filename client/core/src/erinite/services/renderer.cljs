@@ -28,11 +28,13 @@
       (events/listen!
         {:Navigation/page-changed
             (fn [path page]
-              (om/set-state! owner
-                :current-page
-                (assoc page
-                  :view-components views
-                  :id (apply keyword (peek path)))))
+              (let [[doc-id page-id] (peek path)]
+                (om/set-state! owner
+                  :current-page
+                  (assoc page
+                    :view-components views
+                    :document-id     doc-id 
+                    :page-id         page-id))))
          :Renderer/set
             (fn [new-renderer]
               (om/set-state! owner

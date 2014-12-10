@@ -44,8 +44,6 @@
 (defn forward*
   "Navigate page forward by updating path"
   [{:keys [path structure] :as nav} page-keyword]
-  (println "Path:" path)
-  (println "Structure:" structure)
   (let [[current-doc _] (peek path)
         ;; Get children of current page
         children        (->> path peek (get-in structure) :children)
@@ -111,14 +109,17 @@
 
 (defn forward!
   "Go to a child page (may open new document)"
-  [navigation page-keyword params]
-  (swap!
-    (:nav-state navigation)
-    (fn [nav]
-      ; Navigate page forward and merge in new parameters
-      (-> (forward* nav page-keyword)
-          (update-in [:params] merge params)
-          (fix-doc-root* :forward)))))
+  [navigation page-keyword params & [dont-fix-root?]]
+  (let [fix-root (if-not dont-fix-root?
+                   #(fix-doc-root* % :forward)
+                   identity)]
+    (swap!
+      (:nav-state navigation)
+      (fn [nav]
+        ; Navigate page forward and merge in new parameters
+        (-> (forward* nav page-keyword)
+            (update-in [:params] merge params)
+            (fix-doc-root* :forward))))))
 
 
 (defn backward!
@@ -144,11 +145,22 @@
   (swap!
     (:nav-state navigation)  
     (fn [{:keys [path] :as nav}]
-      (let [; Close current document
-            previous-document (close* nav) 
-            ; Create new path within now-closed document
+      (let [;; Find out which document is currently open
             [current-doc _] (peek path)
-            new-path        (into [[current-doc :*]]
+            ;; Close current document
+            previous-document (close* nav) 
+            ;; Get the document of the now top-of-open docs stack
+            [prev-doc _]    (peek (:path previous-document))
+            ;; If document is not actually closed (previous is same as current)
+            ;; then that means there were no other open documents and close*
+            ;; inserted the root. In this case, the new path is already relative
+            ;; to the root so we don't add it (use empty vec), but if this isn't
+            ;; the case (previous doc not same as current) then the new path
+            ;; needs to be relative to the document root, so append our path to
+            ;; that instead of using an empty vector
+            empty-vec       (if (= prev-doc current-doc) [] [[current-doc :*]])
+            ;; Create new path within now-closed document
+            new-path        (into empty-vec
                                   (map #(vector current-doc %) new-path))]
         ; And add new path in, effectively reopening it on new path
         (-> previous-document

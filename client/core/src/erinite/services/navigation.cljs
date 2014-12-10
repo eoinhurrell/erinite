@@ -17,6 +17,7 @@
   [state]
   (let [pathname  (.. js/window -location -pathname)
         path      (next (clojure.string/split pathname #"/"))]
+    (println "Page load" path)
     (events/send! :Navigation/load
                   (or path [(name (:default state))]))))
 
@@ -35,8 +36,7 @@
             structure     (:structure new-state)
             append-params (fn [[doc-id page-id]]
                             (concat
-                              (conj path
-                                    (name (if (= page-id :*) doc-id page-id)))
+                              [(name (if (= page-id :*) doc-id page-id))]
                               (map
                                 #(get (:params page) % "")
                                 (get-in structure [page-id :params]))))
@@ -45,6 +45,10 @@
                             flatten
                             (clojure.string/join "/")
                             (str "/"))]
+        (println "")
+        (println old-path)
+        (println new-path)
+        (println path)
         (push-state! {:default (:default-document new-state)} (:title page) path)
         (events/send! :Navigation/page-changed new-path page)))))
 
@@ -82,7 +86,9 @@
       navigation
       page-id
       ;; Create map of parameters name to value
-      (into {} (map vector param-list parameters)))
+      (into {} (map vector param-list parameters))
+      ;; Don't move from document root to default page
+      true)
     ;; Strip parameters from remaining path 
     [nil (drop (count parameters) remaining)]))
 
@@ -106,18 +112,19 @@
     (events/listen!
       {;; Set the page to a specific page, named by a path
        :Navigation/load (fn [path]
-                          (println "LOADING PATH:" path)
                           (let [structure (:structure @nav-state)]
+                            ;; Clear existing documents and set root
+                            (println "LOADING" path)
+                            (nav/set-document! component (keyword (first path)))
                             ;; Navigate along the path by consuming the path
                             ;; page by page an extracting the required
                             ;; parameters from each and then navigating forward
                             ;; for each page
-                            (println "Consuming")
                             (consume
                               (partial consume-path component structure)
                               nil
                               path)
-                            (println "Done consuming")))
+                            (println "DONE" (:path @nav-state))))
        ;; Set te page to a specific subpage
        :Navigation/forward  (page-change-helper component nav/forward!)
        ;; Set the page to the parent page
