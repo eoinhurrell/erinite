@@ -15,7 +15,8 @@
                         data
                         {:state {:current-page (dissoc current-page
                                                        :view-components)}
-                         :react-key component-id})
+                         :react-key (or (get-in node [:attrs :key])
+                                        (name component-id))})
             enter-anim?   (if (get-in node [:attrs :enter-anim]) true false)
             leave-anim?   (if (get-in node [:attrs :leave-anim]) true false)]
         (if (or enter-anim? leave-anim?)

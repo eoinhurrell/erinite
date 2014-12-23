@@ -38,7 +38,7 @@
                               [(name (if (= page-id :*) doc-id page-id))]
                               (map
                                 #(get (:params page) % "")
-                                (get-in structure [page-id :params]))))
+                                (get-in structure [doc-id page-id :params]))))
             path          (->> new-path
                             (map append-params)
                             flatten
