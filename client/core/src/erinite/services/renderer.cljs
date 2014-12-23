@@ -40,6 +40,9 @@
               (om/set-state! owner
                 :renderer
                 (get renderers new-renderer invalid-renderer)))
+         :State/create
+            (fn [where]
+              (om/transact! data where identity))
          :State/set
             (fn [where what]
               (om/update! data where what))}))
