@@ -37,6 +37,7 @@
                                    #(= current-doc (first %))
                                    reverse-path))
         new-path        (vec (rseq prev-doc-path))]
+    #_(println (into [] (take-while #(= current-doc (first %) reverse-path))))
     ;; Replace path with new path, but make sure it cannot be empty
     (assoc nav :path (if (empty? new-path) [[current-doc :*]] new-path))))
 
@@ -124,19 +125,29 @@
 
 (defn backward!
   "Go to the parent page (may close an open document)"
-  [navigation]
+  [navigation & [dont-fix-root?]]
   (swap!
     (:nav-state navigation)
     (fn [{:keys [path] :as nav}]
-      (let [[current-doc page] (peek path)]
-        (apply
-          update-in
-          (-> (backward* nav current-doc)
-              (fix-doc-root* :backward))
-          [:params] ; Remove old parameters
-          dissoc
-          ;; Old parameters to remove are the parameters from old page
-          (get-in nav [:structure current-doc page :params]))))))
+      (let [[current-doc page] (peek path)
+            fix-root  (if-not dont-fix-root?
+                        #(fix-doc-root* % :backward)        
+                        identity)
+            new-nav   (-> (backward* nav current-doc) fix-root)
+            removed-path (map
+                           first
+                            (drop-while
+                              (fn [[a b]] (= a b))
+                              (map vector path (concat (:path new-nav)
+                                                       (repeat nil)))))
+            ;; Old parameters to remove are the parameters from old page
+            removed-params (flatten
+                             (mapv
+                               #(get-in nav [:structure (first %) (second %) :params])
+                               removed-path))]
+      (println "Removed path:" removed-path)
+      (println "Params to remove:" removed-params)
+      (apply update-in new-nav [:params] dissoc removed-params)))))
 
 
 (defn go-to!
@@ -175,7 +186,12 @@
 (defn close!
   "Close open document"
   [navigation]
-  (swap!
+  (let [path            (:path @(:nav-state navigation))
+        [current-doc _] (peek path)]
+    (doseq [_ (drop 1 (take-while #(= current-doc (first %)) path))]
+      (backward! navigation :dont-fix-root))
+    (backward! navigation))
+  #_(swap!
     (:nav-state navigation)
     (comp #(fix-doc-root* % :forward) close*)))
 

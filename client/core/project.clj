@@ -29,5 +29,4 @@
           :output-to "resources/public/app/zardoz.js"
           :optimizations :advanced }}]}
 
-  :source-paths ["src"]
   :hooks [leiningen.cljsbuild])
