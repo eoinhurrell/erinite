@@ -66,10 +66,13 @@
 
 
 (defn consume-path
-  [navigation structure null page-id remaining]
+  [navigation structure document-id page-id remaining]
   ;; Look up what parameters this page expects
   (let [page-id       (keyword page-id)
-        page          (get structure page-id)
+        [document-id page-id] (if (get structure page-id)
+                                [page-id :*]
+                                [document-id page-id])
+        page          (get-in structure [document-id page-id])
         param-list    (:params page)
         ;; Retrieve list of items for parameters actually present on path
         parameters    (take-while ; Keep taking from list while there
@@ -85,7 +88,7 @@
       ;; Don't move from document root to default page
       true)
     ;; Strip parameters from remaining path 
-    [nil (drop (count parameters) remaining)]))
+    [document-id (drop (count parameters) remaining)]))
 
 
 (defn page-change-helper
@@ -107,16 +110,17 @@
     (events/listen!
       {;; Set the page to a specific page, named by a path
        :Navigation/load (fn [path]
-                          (let [structure (:structure @nav-state)]
+                          (let [structure (:structure @nav-state)
+                                document  (keyword (first path))]
                             ;; Clear existing documents and set root
-                            (nav/set-document! component (keyword (first path)))
+                            (nav/set-document! component document)
                             ;; Navigate along the path by consuming the path
                             ;; page by page an extracting the required
                             ;; parameters from each and then navigating forward
                             ;; for each page
                             (consume
                               (partial consume-path component structure)
-                              nil
+                              document
                               path)))
        ;; Set te page to a specific subpage
        :Navigation/forward  (page-change-helper component nav/forward!)

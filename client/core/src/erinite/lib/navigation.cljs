@@ -204,6 +204,7 @@
     (fn [nav]
       (-> nav
           (assoc :path [[document :*]])
+          (update-in [:params] merge params)
           (fix-doc-root* :forward)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
