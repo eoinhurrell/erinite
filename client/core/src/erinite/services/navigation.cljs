@@ -17,6 +17,8 @@
   [state]
   (let [pathname  (.. js/window -location -pathname)
         path      (next (clojure.string/split pathname #"/"))]
+    #_(println "URL:" pathname)
+    #_(println "Path:" path)
     (events/send! :Navigation/load
                   (or path [(name (:default state))]))))
 
@@ -44,6 +46,7 @@
                             flatten
                             (clojure.string/join "/")
                             (str "/"))]
+        #_(println old-path new-path path)
         (push-state! {:default (:default-document new-state)} (:title page) path)
         (events/send! :Navigation/page-changed new-path page)))))
 
@@ -79,6 +82,7 @@
                         #(not= % "") ; If empty item, then there are no more
                         ;; Maximum number of params is number in param-list
                         (take (count param-list) remaining))]
+    #_(println "Moving forward:" page-id)
     ;; Navigate forward one page
     (nav/forward!
       navigation
@@ -110,10 +114,12 @@
     (events/listen!
       {;; Set the page to a specific page, named by a path
        :Navigation/load (fn [path]
+                          #_(println "LOAD:" path)
                           (let [structure (:structure @nav-state)
                                 document  (keyword (first path))]
                             ;; Clear existing documents and set root
                             (nav/set-document! component document)
+                            #_(println @nav-state)
                             ;; Navigate along the path by consuming the path
                             ;; page by page an extracting the required
                             ;; parameters from each and then navigating forward
@@ -148,5 +154,6 @@
 
 
 (defn navigation-srv [{:keys [documents root-document]}]
+  (println root-document)
   (map->Navigation {:nav-state (atom (nav/make-nav-state documents root-document))})) 
 

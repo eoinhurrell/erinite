@@ -145,8 +145,8 @@
                              (mapv
                                #(get-in nav [:structure (first %) (second %) :params])
                                removed-path))]
-      (println "Removed path:" removed-path)
-      (println "Params to remove:" removed-params)
+      #_(println "Removed path:" removed-path)
+      #_(println "Params to remove:" removed-params)
       (apply update-in new-nav [:params] dissoc removed-params)))))
 
 

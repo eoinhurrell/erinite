@@ -8,6 +8,7 @@
             [erinite.internal.template-transform]
             [erinite.lib.events :as events]
             [erinite.services.navigation :refer [navigation-srv]]  
+            [erinite.internal.state]
             [erinite.services.renderer :refer [renderer-srv]]))
 
 
@@ -17,6 +18,9 @@
   (apply events/send!
          (keyword event-name)
          (js->clj event-data)))
+
+(defn clear-app-model! []
+  (reset! erinite.internal.state/app-model {}))
 
 
 (defn basic-renderer
